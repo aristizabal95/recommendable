@@ -20,12 +20,12 @@ module Recommendable
       # @param [String, Symbol, Class] klass the class from which to get recommendations
       # @param [Fixnum] limit the number of recommendations to fetch (defaults to 10)
       # @return [Array] a list of things this person's gonna love
-      def recommended_for(klass, limit = 10, offset = 0)
+      def recommended_for(klass, limit = 10, offset = 0, score_threshold = 0)
         recommended_set = Recommendable::Helpers::RedisKeyMapper.recommended_set_for(klass, self.id)
         return Recommendable.query(klass, []) unless rated_anything? && Recommendable.redis.zcard(recommended_set) > 0
 
         ids = Recommendable.redis.zrevrange(recommended_set, 0, -1, :with_scores => true)
-        ids = ids.select { |id, score| score > 0 }.map { |pair| pair.first }
+        ids = ids.select { |id, score| score > score_threshold }.map { |pair| pair.first }
 
         order = ids.map { |id| "#{klass.quoted_table_name}.#{klass.quoted_primary_key} = %d DESC" }.join(', ')
         order = klass.send(:sanitize_sql_for_assignment, [order, *ids])
